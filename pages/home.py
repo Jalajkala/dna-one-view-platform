@@ -27,8 +27,8 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&auto=format&fit=crop&q=60", use_container_width=True)
     st.subheader("PATH A")
-    st.markdown("**KPI Catalog**")
     st.caption("“I want to build my understanding on various Standard KPIs”")
+    st.markdown("**KPI Catalog**")
     
     # Display the metric
     st.metric(label="Total Available KPIs", value=kpi_count)
@@ -40,8 +40,9 @@ with col1:
 with col2:
     st.image("https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&auto=format&fit=crop&q=60", use_container_width=True)
     st.subheader("PATH B")
-    st.markdown("**Analytical Products Catalog**")
     st.caption("“I want to explore which Analytical Products are available to use, so I adopt, reuse and not rebuild”")
+    st.markdown("**Analytical Products Catalog**")
+    
     
     # Display the metric
     st.metric(label="Total Analytical Products", value=ap_count)
@@ -53,8 +54,9 @@ with col2:
 with col3:
     st.image("https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=500&auto=format&fit=crop&q=60", use_container_width=True)
     st.subheader("PATH C")
-    st.markdown("**E2A Data Map**")
     st.caption("“My need is not Standard or is not covered by available Analytical Products. I would like to explore authorized data sources so I could build my analytical need as a citizen”")
+    st.markdown("**E2A Data Map**")
+    
     
     # Display the metric
     st.metric(label="Total Sources of Truth", value=dm_count)
