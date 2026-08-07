@@ -1,18 +1,27 @@
 import streamlit as st
 import pandas as pd
-from streamlit_agraph import agraph, Node, Edge, Config
 
 # Navigation option back to Home Page
 if st.button("← Back to Home"):
     st.switch_page("pages/home.py")
 
 st.title("🗺️ PATH C: E2A Data Map")
-st.markdown(
-    "Explore the E2A data hierarchy using the interactive mind map below. "
-    "**Click on any Data Source node (green boxes)** to view its details and access it in Collibra, "
-    "or use the search bar to find specific data immediately."
-)
+st.markdown("Navigate the data hierarchy from left to right to discover authorized data sources.")
 st.markdown("---")
+
+# Initialize session state variables to track the user's clickable path
+if "selected_domain" not in st.session_state:
+    st.session_state.selected_domain = None
+if "selected_type" not in st.session_state:
+    st.session_state.selected_type = None
+
+# Callback functions to handle button clicks and manage state
+def set_domain(domain):
+    st.session_state.selected_domain = domain
+    st.session_state.selected_type = None # Reset type when domain changes
+
+def set_type(dtype):
+    st.session_state.selected_type = dtype
 
 # Fetch active Data Source records from Neon DB
 try:
@@ -26,11 +35,11 @@ except Exception as e:
 if df.empty:
     st.info("No data sources found in the Data Map yet.")
 else:
-    # 1. Standalone Search Functionality
+    # Top Control Bar: Search functionality
     search_query = st.text_input("🔍 Global Search (Data Source, Type, or Purpose)", "")
     st.markdown("---")
 
-    # If user is searching, bypass the graph and show standard results
+    # If user is searching, bypass the cascade and show standard results
     if search_query:
         st.subheader("🔎 Search Results")
         search_df = df[
@@ -47,90 +56,92 @@ else:
                 with st.container(border=True):
                     st.subheader(row['datasource_title'])
                     st.caption(f"🏢 **Domain:** {row.get('datasource_business_domain')} | 💾 **Type:** {row.get('datasource_data_type')} | 🏷️ **Tags:** {row.get('datasource_tag')}")
-                    st.write(row.get('datasource_purpose', 'No purpose description available.'))
+                    st.write(row.get('datasource_purpose', 'No description available.'))
                     collibra_link = row.get('datasource_link_to_collibra')
                     if pd.notna(collibra_link) and collibra_link.strip() != "":
                         st.link_button("🔗 Access in Collibra", collibra_link)
     
-    # 2. Interactive Mind Map UI
+    # Cascade UI (Matching the Wireframe)
     else:
-        nodes = []
-        edges = []
+        # Create 3 columns simulating the Miller Columns UI
+        col_dom, col_typ, col_src = st.columns([1, 1, 1.5])
         
-        # Track added nodes to prevent duplicates
-        added_domains = set()
-        added_types = set()
-
-        # Add the Central Root Node
-        nodes.append(Node(id="Root", label="E2A Data Map", size=25, shape="diamond", color="#FF6B6B"))
-
-        # Build the graph hierarchy
-        for _, row in df.iterrows():
-            domain = row.get('datasource_business_domain', 'Unknown Domain')
-            dtype = row.get('datasource_data_type', 'Unknown Type')
-            source_title = row['datasource_title']
+        # --- COLUMN 1: DOMAIN ---
+        with col_dom:
+            domains = sorted(df["datasource_business_domain"].dropna().unique())
+            st.markdown(f"**DOMAIN** `{len(domains)}`")
             
-            # Create unique IDs for intermediate nodes
-            domain_id = f"domain_{domain}"
-            type_id = f"type_{domain}_{dtype}"
-            
-            # --- Add Domain Nodes ---
-            if domain_id not in added_domains:
-                nodes.append(Node(id=domain_id, label=domain, size=20, shape="dot", color="#4ECDC4"))
-                edges.append(Edge(source="Root", target=domain_id))
-                added_domains.add(domain_id)
+            for domain in domains:
+                # Calculate metrics for the button labels
+                dom_df = df[df["datasource_business_domain"] == domain]
+                type_count = dom_df["datasource_data_type"].nunique()
+                src_count = len(dom_df)
                 
-            # --- Add Data Type Nodes ---
-            if type_id not in added_types:
-                nodes.append(Node(id=type_id, label=dtype, size=15, shape="dot", color="#45B7D1"))
-                edges.append(Edge(source=domain_id, target=type_id))
-                added_types.add(type_id)
+                is_selected = (st.session_state.selected_domain == domain)
+                btn_type = "primary" if is_selected else "secondary"
                 
-            # --- Add Data Source Nodes ---
-            # We use the exact title as the node ID so we can look it up when clicked
-            nodes.append(Node(id=source_title, label=source_title, size=15, shape="box", color="#A8E6CF"))
-            edges.append(Edge(source=type_id, target=source_title))
+                # Render the button. (Streamlit buttons don't support deep HTML styling natively, 
+                # so we format the string to mimic the wireframe's data presentation).
+                btn_label = f"🏢 {domain} \n\n {type_count} types • {src_count} sources"
+                st.button(
+                    btn_label, 
+                    key=f"dom_{domain}", 
+                    type=btn_type, 
+                    use_container_width=True, 
+                    on_click=set_domain, 
+                    args=(domain,)
+                )
 
-        # Configure graph physics and layout
-        config = Config(
-            width="100%",
-            height=500,
-            directed=True,
-            physics=True,
-            hierarchical=False, # Set to True for a strict top-down tree, False for a floating mind map
-            nodeHighlightBehavior=True,
-            highlightColor="#F7A7A6",
-            collapsible=False
-        )
-
-        st.subheader("🗂️ Interactive Data Explorer")
-        
-        # Render the graph and capture the clicked node ID
-        clicked_node_id = agraph(nodes=nodes, edges=edges, config=config)
-        
-        # 3. Display Detail Card when a Data Source is clicked
-        if clicked_node_id:
-            # Check if the clicked node is an actual Data Source (not a domain or type)
-            selected_row = df[df["datasource_title"] == clicked_node_id]
-            
-            if not selected_row.empty:
-                row_data = selected_row.iloc[0]
+        # --- COLUMN 2: DATA TYPE ---
+        with col_typ:
+            if st.session_state.selected_domain:
+                type_df = df[df["datasource_business_domain"] == st.session_state.selected_domain]
+                dtypes = sorted(type_df["datasource_data_type"].dropna().unique())
                 
-                st.markdown("### 📄 Source Details")
-                with st.container(border=True):
-                    st.subheader(row_data['datasource_title'])
+                st.markdown(f"**DATA TYPE** `{len(dtypes)}`")
+                
+                for dtype in dtypes:
+                    src_count = len(type_df[type_df["datasource_data_type"] == dtype])
                     
-                    subdomain = row_data.get('datasource_business_subdomain', 'N/A')
-                    tags = row_data.get('datasource_tag', 'None')
-                    st.caption(f"**Subdomain:** {subdomain} | 🏷️ **Tags:** {tags}")
+                    is_selected = (st.session_state.selected_type == dtype)
+                    btn_type = "primary" if is_selected else "secondary"
                     
-                    st.write(row_data.get('datasource_purpose', 'No description available.'))
-                    
-                    st.divider()
-                    collibra_link = row_data.get('datasource_link_to_collibra')
-                    if pd.notna(collibra_link) and collibra_link.strip() != "":
-                        st.link_button("🔗 Access in Collibra", collibra_link, use_container_width=True)
-                    else:
-                        st.button("🔗 No Collibra Link", disabled=True, use_container_width=True)
-            else:
-                st.info("💡 Keep drilling down: Click on a green Data Source box to view its details.")
+                    btn_label = f"📂 {dtype} \n\n {src_count} sources"
+                    st.button(
+                        btn_label, 
+                        key=f"typ_{dtype}", 
+                        type=btn_type, 
+                        use_container_width=True, 
+                        on_click=set_type, 
+                        args=(dtype,)
+                    )
+
+        # --- COLUMN 3: DATA SOURCES ---
+        with col_src:
+            if st.session_state.selected_domain and st.session_state.selected_type:
+                src_df = df[
+                    (df["datasource_business_domain"] == st.session_state.selected_domain) & 
+                    (df["datasource_data_type"] == st.session_state.selected_type)
+                ]
+                
+                st.markdown(f"**DATA SOURCES** `{len(src_df)}`")
+                
+                for idx, row in src_df.iterrows():
+                    with st.container(border=True):
+                        st.markdown(f"**{row['datasource_title']}**")
+                        
+                        # Process tags to mimic the wireframe's pill design
+                        tags_raw = str(row.get('datasource_tag', ''))
+                        tag_html = ""
+                        if tags_raw and tags_raw != 'nan':
+                            tags_list = [t.strip() for t in tags_raw.split(',')]
+                            for tag in tags_list:
+                                # Simple inline CSS to create pill-like tags
+                                tag_html += f'<span style="background-color:#E0E0E0; color:#333; padding:2px 8px; border-radius:12px; font-size:12px; margin-right:5px;">{tag}</span>'
+                        
+                        st.markdown(tag_html, unsafe_allow_html=True)
+                        st.write(row.get('datasource_purpose', ''))
+                        
+                        collibra_link = row.get('datasource_link_to_collibra')
+                        if pd.notna(collibra_link) and collibra_link.strip() != "":
+                            st.link_button("🔗 Access in Collibra", collibra_link)
