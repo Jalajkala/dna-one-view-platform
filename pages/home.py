@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.title("Welcome to the E2A D&A One View Platform")
-st.markdown("Simplifying your Data & Analytics journey through 3 logical paths..")
+st.subheader("Simplifying your Data & Analytics journey through 3 logical paths..")
 st.markdown("---")
 
 # --- Fetch Metrics from Neon DB ---
