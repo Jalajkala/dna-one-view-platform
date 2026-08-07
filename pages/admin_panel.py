@@ -7,7 +7,7 @@ if st.button("← Back to Home"):
     st.switch_page("pages/home.py")
 
 st.title("⚙️ ADMIN: Manage Access Control & Data")
-st.markdown("Add, update, or remove records across all platform catalogs using structured forms.")
+st.markdown("Add, update, or remove records across all platform catalogs and the product roadmap using structured forms.")
 st.markdown("---")
 
 # Role-Based Access Security Check
@@ -24,11 +24,12 @@ except Exception as e:
     st.error(f"Error connecting to database: {e}")
     st.stop()
 
-# Section Layout via Tabs - This defines the 'tab_datamap' variable
-tab_kpi, tab_analytics, tab_datamap, tab_users = st.tabs([
+# Section Layout via Tabs (Added Roadmap Tab)
+tab_kpi, tab_analytics, tab_datamap, tab_roadmap, tab_users = st.tabs([
     "📊 KPI Catalog", 
     "📈 Analytical Products", 
     "🗺️ Data Map",
+    "🚀 Roadmap",
     "👥 User Access Management"
 ])
 
@@ -79,7 +80,7 @@ with tab_kpi:
                     st.success(f"KPI '{kpi_title}' successfully created!")
                     st.rerun()
 
-    else: # Update / Delete Existing KPI
+    else:
         df_kpi = conn.query("SELECT * FROM tbl_standardkpi_catalog ORDER BY kpi_id", ttl="0s")
         if df_kpi.empty:
             st.info("No KPI records found in the database.")
@@ -341,7 +342,116 @@ with tab_datamap:
 
 
 # ==========================================
-# TAB 4: User Access Management
+# TAB 4: Roadmap Management
+# ==========================================
+with tab_roadmap:
+    st.subheader("Manage Product & Data Roadmap")
+    action_rm = st.radio(
+        "Choose Action:", 
+        ["➕ Add New Roadmap Item", "✏️ Update / Delete Existing Item"], 
+        horizontal=True, key="action_rm"
+    )
+
+    if action_rm == "➕ Add New Roadmap Item":
+        with st.form("form_add_rm", clear_on_submit=True):
+            rm_title = st.text_input("Item Title *")
+            rm_type = st.selectbox("Item Type", ["Data Source", "Analytical Product"])
+            col1, col2 = st.columns(2)
+            with col1:
+                rm_domain = st.text_input("Business Domain")
+                rm_horizon = st.selectbox("Target Horizon", ["Q3 2026", "Q4 2026", "2027 & Beyond"])
+            with col2:
+                rm_date = st.date_input("Target Date")
+                rm_audience = st.text_input("Target Audience")
+            
+            rm_desc = st.text_area("Description")
+            rm_status = st.checkbox("Visible Status", value=True)
+
+            submit_rm = st.form_submit_button("➕ Save Roadmap Item")
+
+            if submit_rm:
+                if not rm_title.strip():
+                    st.error("Item Title is required.")
+                else:
+                    with conn.session as s:
+                        s.execute(text("""
+                            INSERT INTO tbl_roadmap 
+                            (item_title, item_type, business_domain, target_horizon, target_date, description, target_audience, visiblestatus)
+                            VALUES (:title, :itype, :domain, :horizon, :tdate, :desc, :audience, :status)
+                        """), {
+                            "title": rm_title, "itype": rm_type, "domain": rm_domain,
+                            "horizon": rm_horizon, "tdate": rm_date, "desc": rm_desc,
+                            "audience": rm_audience, "status": rm_status
+                        })
+                        s.commit()
+                    st.success(f"Roadmap item '{rm_title}' added successfully!")
+                    st.rerun()
+
+    else:
+        df_rm = conn.query("SELECT * FROM tbl_roadmap ORDER BY roadmap_id", ttl="0s")
+        if df_rm.empty:
+            st.info("No roadmap records found.")
+        else:
+            rm_options = {f"ID {row['roadmap_id']} - {row['item_title']} ({row['target_horizon']})": row['roadmap_id'] for _, row in df_rm.iterrows()}
+            selected_rm_label = st.selectbox("Select Roadmap Item to Modify:", list(rm_options.keys()))
+            selected_rm_id = rm_options[selected_rm_label]
+            row_data = df_rm[df_rm['roadmap_id'] == selected_rm_id].iloc[0]
+
+            with st.form("form_edit_rm"):
+                e_title = st.text_input("Item Title *", value=row_data['item_title'])
+                
+                types = ["Data Source", "Analytical Product"]
+                curr_type_idx = types.index(row_data['item_type']) if row_data['item_type'] in types else 0
+                e_type = st.selectbox("Item Type", types, index=curr_type_idx)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    e_domain = st.text_input("Business Domain", value=row_data.get('business_domain') or "")
+                    
+                    horizons = ["Q3 2026", "Q4 2026", "2027 & Beyond"]
+                    curr_hz_idx = horizons.index(row_data['target_horizon']) if row_data['target_horizon'] in horizons else 0
+                    e_horizon = st.selectbox("Target Horizon", horizons, index=curr_hz_idx)
+                with col2:
+                    default_date = pd.to_datetime(row_data['target_date']).date() if pd.notna(row_data['target_date']) else None
+                    e_date = st.date_input("Target Date", value=default_date)
+                    e_audience = st.text_input("Target Audience", value=row_data.get('target_audience') or "")
+                
+                e_desc = st.text_area("Description", value=row_data.get('description') or "")
+                e_status = st.checkbox("Visible Status", value=bool(row_data.get('visiblestatus')))
+
+                col_btn1, col_btn2 = st.columns([1, 1])
+                with col_btn1:
+                    btn_update = st.form_submit_button("💾 Save Changes")
+                with col_btn2:
+                    btn_delete = st.form_submit_button("🗑️ Delete Item", type="secondary")
+
+                if btn_update:
+                    with conn.session as s:
+                        s.execute(text("""
+                            UPDATE tbl_roadmap SET
+                            item_title = :title, item_type = :itype, business_domain = :domain,
+                            target_horizon = :horizon, target_date = :tdate, description = :desc,
+                            target_audience = :audience, visiblestatus = :status
+                            WHERE roadmap_id = :id
+                        """), {
+                            "title": e_title, "itype": e_type, "domain": e_domain,
+                            "horizon": e_horizon, "tdate": e_date, "desc": e_desc,
+                            "audience": e_audience, "status": e_status, "id": selected_rm_id
+                        })
+                        s.commit()
+                    st.success("Roadmap item updated successfully!")
+                    st.rerun()
+
+                if btn_delete:
+                    with conn.session as s:
+                        s.execute(text("DELETE FROM tbl_roadmap WHERE roadmap_id = :id"), {"id": selected_rm_id})
+                        s.commit()
+                    st.warning("Roadmap item deleted successfully!")
+                    st.rerun()
+
+
+# ==========================================
+# TAB 5: User Access Management
 # ==========================================
 with tab_users:
     if user_role != "Admin":
