@@ -1,21 +1,38 @@
 import streamlit as st
+import pandas as pd
 
 st.title("Welcome to the E2A D&A One View Platform")
 st.markdown("Please choose a path based on your data and analytical needs.")
 st.markdown("---")
+
+# --- Fetch Metrics from Neon DB ---
+try:
+    conn = st.connection("neon_db", type="sql")
+    # Fetch active KPI count
+    kpi_count = conn.query("SELECT COUNT(*) as count FROM tbl_standardkpi_catalog WHERE kpi_showonscreenstatus = TRUE", ttl="1m").iloc[0]['count']
+    # Fetch active Analytical Product count
+    ap_count = conn.query("SELECT COUNT(*) as count FROM tbl_analytical_product_catalog WHERE analytical_product_visiblestatus = TRUE", ttl="1m").iloc[0]['count']
+    # Fetch active Data Source count
+    dm_count = conn.query("SELECT COUNT(*) as count FROM tbl_data_map WHERE datasource_visiblestatus = TRUE", ttl="1m").iloc[0]['count']
+except Exception as e:
+    # Fallback if the database connection fails
+    kpi_count = "N/A"
+    ap_count = "N/A"
+    dm_count = "N/A"
 
 # Create three equal-width columns for a side-by-side layout
 col1, col2, col3 = st.columns(3)
 
 # --- Column 1: PATH A ---
 with col1:
-    # You can replace this URL with a local file path like "images/kpi_icon.png"
     st.image("https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&auto=format&fit=crop&q=60", use_container_width=True)
     st.subheader("PATH A")
     st.markdown("**KPI Catalog**")
     st.caption("“I want to build my understanding on various Standard KPIs”")
     
-    # use_container_width=True makes the button stretch to match the image width
+    # Display the metric
+    st.metric(label="Total Available KPIs", value=kpi_count)
+    
     if st.button("Explore KPI Catalog", use_container_width=True):
         st.switch_page("pages/path_a_kpi.py")
 
@@ -25,6 +42,9 @@ with col2:
     st.subheader("PATH B")
     st.markdown("**Analytical Products Catalog**")
     st.caption("“I want to explore which Analytical Products are available to use, so I adopt, reuse and not rebuild”")
+    
+    # Display the metric
+    st.metric(label="Total Analytical Products", value=ap_count)
     
     if st.button("Explore Analytical Products", use_container_width=True):
         st.switch_page("pages/path_b_analytical.py")
@@ -36,14 +56,15 @@ with col3:
     st.markdown("**E2A Data Map**")
     st.caption("“My need is not Standard or is not covered by available Analytical Products. I would like to explore authorized data sources so I could build my analytical need as a citizen”")
     
+    # Display the metric
+    st.metric(label="Total Sources of Truth", value=dm_count)
+    
     if st.button("Explore E2A Data Map", use_container_width=True):
-        # Triggers the required alert before proceeding to Path C
         st.session_state.show_path_c_alert = True
 
 st.markdown("---")
 
 # --- Alert logic for PATH C selection ---
-# This will render below the columns if the PATH C button is clicked
 if st.session_state.get("show_path_c_alert", False):
     st.warning("Have you browsed the Analytical Catalog to be sure your need is not already covered ?")
     
