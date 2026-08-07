@@ -13,6 +13,7 @@ path_a = st.Page("pages/path_a_kpi.py", title="PATH A: KPI Catalog", icon="📊"
 path_b = st.Page("pages/path_b_analytical.py", title="PATH B: Analytical Products", icon="📈")
 path_c = st.Page("pages/path_c_datamap.py", title="PATH C: E2A Data Map", icon="🗺️")
 admin_panel = st.Page("pages/admin_panel.py", title="ADMIN: Data Management", icon="⚙️")
+roadmap_page = st.Page("pages/roadmap.py", title="Roadmap", icon="🚀")
 
 # Mock Authentication for Role-Based Access Control
 if "user_role" not in st.session_state:
@@ -27,7 +28,7 @@ with st.sidebar:
     )
 
 # Establish base navigation array
-nav_pages = [home_page, path_a, path_b, path_c]
+nav_pages = [home_page, path_a, path_b, path_c, roadmap_page]
 
 # The Admin Panel is appended only if the user role permits updates/modifications
 if st.session_state.user_role in ["Contributor", "Admin"]:
