@@ -41,20 +41,20 @@ else:
     def select_kpi(kpi):
         st.session_state.kpi_selected = kpi
 
-    # Domain Images Mapping
-    domain_images = {
-        "Sales & Marketing": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&auto=format&fit=crop&q=60",
-        "Supply Chain & Logistics": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=60",
-        "Finance": "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&auto=format&fit=crop&q=60",
-        "Service Personnel": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=500&auto=format&fit=crop&q=60",
-        "Quality": "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60"
+    # Domain Icons Mapping (Clean & Compact)
+    domain_icons = {
+        "Sales & Marketing": "📈",
+        "Supply Chain & Logistics": "📦",
+        "Finance": "💰",
+        "Service Personnel": "👥",
+        "Quality": "🔍"
     }
-    default_img = "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500&auto=format&fit=crop&q=60"
+    default_icon = "📊"
 
     # 3-Column Miller Layout
     col_dom, col_sub, col_kpi = st.columns(3)
 
-    # --- COLUMN 1: DOMAIN CARDS WITH IMAGES ---
+    # --- COLUMN 1: DOMAIN CARDS WITH ICONS ---
     with col_dom:
         st.markdown("### 🏢 1. DOMAIN")
         domains = sorted([d for d in df["kpi_domain"].dropna().unique() if d])
@@ -63,12 +63,18 @@ else:
             is_selected = (st.session_state.kpi_domain == dom)
             btn_type = "primary" if is_selected else "secondary"
             
-            img_url = domain_images.get(dom, default_img)
+            icon = domain_icons.get(dom, default_icon)
+            count = len(df[df["kpi_domain"] == dom])
+            
             with st.container(border=True):
-                st.image(img_url, use_container_width=True)
-                count = len(df[df["kpi_domain"] == dom])
-                st.markdown(f"**{dom}**")
-                st.caption(f"{count} KPIs registered")
+                # Render compact header with icon and text side-by-side
+                ic_col1, ic_col2 = st.columns([1, 4])
+                with ic_col1:
+                    st.markdown(f"### {icon}")
+                with ic_col2:
+                    st.markdown(f"**{dom}**")
+                    st.caption(f"{count} KPIs registered")
+                
                 if st.button(f"Select Domain", key=f"btn_dom_{dom}", type=btn_type, use_container_width=True):
                     select_domain(dom)
 
