@@ -6,7 +6,7 @@ if st.button("← Back to Home"):
     st.switch_page("pages/home.py")
 
 st.title("📊 PATH A: Standard KPI Catalog")
-st.markdown("Navigate the catalog from left to right: Select a Domain, choose a Sub-domain, and view the Standard KPIs.")
+st.markdown("Navigate the catalog from left to right: Click a Domain card, choose a Sub-domain, and click a Standard KPI to view details.")
 st.markdown("---")
 
 # Fetch active KPI data from Neon DB
@@ -41,7 +41,7 @@ else:
     def select_kpi(kpi):
         st.session_state.kpi_selected = kpi
 
-    # Domain Icons Mapping (Clean & Compact)
+    # Domain Icons Mapping
     domain_icons = {
         "Sales & Marketing": "📈",
         "Supply Chain & Logistics": "📦",
@@ -54,7 +54,7 @@ else:
     # 3-Column Miller Layout
     col_dom, col_sub, col_kpi = st.columns(3)
 
-    # --- COLUMN 1: DOMAIN CARDS WITH ICONS ---
+    # --- COLUMN 1: CLICKABLE DOMAIN CARDS ---
     with col_dom:
         st.markdown("### 🏢 1. DOMAIN")
         domains = sorted([d for d in df["kpi_domain"].dropna().unique() if d])
@@ -66,19 +66,12 @@ else:
             icon = domain_icons.get(dom, default_icon)
             count = len(df[df["kpi_domain"] == dom])
             
-            with st.container(border=True):
-                # Render compact header with icon and text side-by-side
-                ic_col1, ic_col2 = st.columns([1, 4])
-                with ic_col1:
-                    st.markdown(f"### {icon}")
-                with ic_col2:
-                    st.markdown(f"**{dom}**")
-                    st.caption(f"{count} KPIs registered")
-                
-                if st.button(f"Select Domain", key=f"btn_dom_{dom}", type=btn_type, use_container_width=True):
-                    select_domain(dom)
+            # The button itself acts as the slick card element
+            button_label = f"{icon}  {dom}  ({count} KPIs)"
+            if st.button(button_label, key=f"btn_dom_{dom}", type=btn_type, use_container_width=True):
+                select_domain(dom)
 
-    # --- COLUMN 2: SUB-DOMAINS ---
+    # --- COLUMN 2: CLICKABLE SUB-DOMAIN CARDS ---
     with col_sub:
         st.markdown("### 📂 2. SUB-DOMAIN")
         if st.session_state.kpi_domain:
@@ -91,17 +84,15 @@ else:
                     btn_type = "primary" if is_selected else "secondary"
                     
                     count = len(sub_df[sub_df["kpi_subdomain"] == sub])
-                    with st.container(border=True):
-                        st.markdown(f"**{sub}**")
-                        st.caption(f"{count} KPIs available")
-                        if st.button("Select Sub-domain", key=f"btn_sub_{sub}", type=btn_type, use_container_width=True):
-                            select_subdomain(sub)
+                    button_label = f"📂  {sub}  ({count} KPIs)"
+                    if st.button(button_label, key=f"btn_sub_{sub}", type=btn_type, use_container_width=True):
+                        select_subdomain(sub)
             else:
                 st.info("No sub-domains available for this domain.")
         else:
-            st.info("👈 Select a Domain to view sub-domains.")
+            st.info("👈 Select a Domain card to view sub-domains.")
 
-    # --- COLUMN 3: STANDARD KPIS ---
+    # --- COLUMN 3: CLICKABLE STANDARD KPI CARDS ---
     with col_kpi:
         st.markdown("### 📌 3. STANDARD KPI")
         if st.session_state.kpi_subdomain:
@@ -116,14 +107,13 @@ else:
                     is_selected = (st.session_state.kpi_selected == kpi_title)
                     btn_type = "primary" if is_selected else "secondary"
                     
-                    with st.container(border=True):
-                        st.markdown(f"**{kpi_title}**")
-                        if st.button("View KPI Card", key=f"btn_kpi_{row['kpi_id']}", type=btn_type, use_container_width=True):
-                            select_kpi(kpi_title)
+                    button_label = f"📌  {kpi_title}"
+                    if st.button(button_label, key=f"btn_kpi_{row['kpi_id']}", type=btn_type, use_container_width=True):
+                        select_kpi(kpi_title)
             else:
                 st.info("No KPIs found.")
         else:
-            st.info("👈 Select a Sub-domain to view KPIs.")
+            st.info("👈 Select a Sub-domain card to view KPIs.")
 
     # --- EXPANDED KPI DETAIL CARD (Appears below when a KPI is selected) ---
     if st.session_state.kpi_selected:
